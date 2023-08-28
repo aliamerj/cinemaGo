@@ -6,6 +6,7 @@ import (
 	"net/http"
 
 	"forum.golangbridge.org/cinemaGo/pkg/modules"
+	"github.com/gorilla/mux"
 	"gorm.io/gorm"
 )
 
@@ -23,6 +24,11 @@ func CreateMovie(w http.ResponseWriter, r *http.Request, db *gorm.DB) {
 	decoder := json.NewDecoder(r.Body)
 	if err := decoder.Decode(&movie); err != nil {
 		http.Error(w, "Invalid request payload", http.StatusBadRequest)
+		return
+	}
+	// Validate the movie before creating it
+	if !isValidMovie(movie) {
+		http.Error(w, "Invalid movie data", http.StatusBadRequest)
 		return
 	}
 
@@ -68,4 +74,126 @@ func GetAllMovies(w http.ResponseWriter, r *http.Request, db *gorm.DB) {
 		log.Printf("Error while encoding movies to JSON: %v", err)
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 	}
+}
+
+func GetMovie(w http.ResponseWriter, r *http.Request, db *gorm.DB) {
+	// Set content type for the response
+	w.Header().Set("Content-Type", "application/json")
+
+	// Initialize a Movie variable
+	var movie modules.Movie
+
+	// Retrieve 'id' from the URL
+	id := mux.Vars(r)["id"]
+
+	// Fetch the movie from the database
+	result := db.Find(&movie, id)
+
+	// Check for errors during the database query
+	if result.Error != nil {
+		// Log the error for debugging purposes
+		log.Printf("Error while getting movie: %v", result.Error)
+		http.Error(w, "Could not retrieve movie", http.StatusInternalServerError)
+		return
+	}
+
+	// Check if the record exists
+	if result.RowsAffected == 0 {
+		http.Error(w, "Movie not found", http.StatusNotFound)
+		return
+	}
+
+	// Send the movie details in JSON format
+	if err := json.NewEncoder(w).Encode(movie); err != nil {
+		log.Printf("Error while encoding movie to JSON: %v", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+	}
+}
+
+func DeleteMovie(w http.ResponseWriter, r *http.Request, db *gorm.DB) {
+	// Set the response content type to JSON
+	w.Header().Set("Content-Type", "application/json")
+
+	// Initialize a Movie variable
+	var movie modules.Movie
+
+	// Retrieve 'id' from the URL
+	id := mux.Vars(r)["id"]
+
+	// Delete the movie from the database
+	result := db.Delete(&movie, id)
+
+	// Check for errors during the database operation
+	if result.Error != nil {
+		// Log the error for debugging
+		log.Printf("Error while deleting the movie: %v", result.Error)
+		http.Error(w, "Could not delete the movie", http.StatusInternalServerError)
+		return
+	}
+
+	// Check if a record was actually deleted
+	if result.RowsAffected == 0 {
+		http.Error(w, "Movie not found", http.StatusNotFound)
+		return
+	}
+
+	// Send a success message
+	response := map[string]string{"message": "The movie has been deleted"}
+
+	if err := json.NewEncoder(w).Encode(&response); err != nil {
+		log.Printf("Error while encoding response to JSON: %v", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+	}
+}
+
+func UpdateMovie(w http.ResponseWriter, r *http.Request, db *gorm.DB) {
+	// Set content type to JSON
+	w.Header().Set("Content-Type", "application/json")
+
+	defer r.Body.Close()
+
+	// Retrieve 'id' from the URL
+	id := mux.Vars(r)["id"]
+
+	// Initialize a Movie variable
+	var movie modules.Movie
+
+	// Decode the incoming JSON into a map
+	updateData := make(map[string]interface{})
+
+	decoder := json.NewDecoder(r.Body)
+	if err := decoder.Decode(&updateData); err != nil {
+		http.Error(w, "Invalid request payload", http.StatusBadRequest)
+		return
+	}
+
+	// Update the movie in the database
+	result := db.Model(&movie).Where("id = ?", id).Updates(updateData)
+
+	// Check for errors and whether any rows were updated
+	if result.Error != nil {
+		log.Printf("Error while updating the movie: %v", result.Error)
+		http.Error(w, "Could not update the movie", http.StatusInternalServerError)
+		return
+	}
+	if result.RowsAffected == 0 {
+		http.Error(w, "Movie not found", http.StatusNotFound)
+		return
+	}
+
+	// Return the updated movie
+	response := map[string]interface{}{"message": "Movie info get updated successfully", "data": &movie}
+	if err := json.NewEncoder(w).Encode(&response); err != nil {
+		log.Printf("Error while encoding movie to JSON: %v", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+	}
+}
+func isValidMovie(movie modules.Movie) bool {
+	// Your validation logic here
+	// For example, check that required fields are present:
+	if movie.Title == "" || movie.Genre == "" || movie.DurationMinutes == 0 {
+		return false
+	}
+	// More validation logic
+	return true
 }

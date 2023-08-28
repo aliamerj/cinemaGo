@@ -7,7 +7,7 @@ import (
 )
 
 // Define Movie struct to hold movie details.
-type Showtimes struct {
+type Showtime struct {
 	gorm.Model
 	MovieID   uint
 	TheaterID uint
