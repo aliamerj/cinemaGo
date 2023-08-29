@@ -17,7 +17,7 @@ func main() {
 
 	}
 	// Automatically migrate multiple schemas
-	err = db.AutoMigrate(&modules.Movie{}, &modules.Theater{}, &modules.User{}, &modules.Ticket{}, &modules.Showtime{})
+	err = db.AutoMigrate(&modules.Movie{}, &modules.Theater{}, &modules.User{}, &modules.Ticket{}, &modules.Showtime{}, &modules.Seat{})
 	if err != nil {
 		log.Fatalf("Could not migrate database: %v", err)
 	}
@@ -25,6 +25,8 @@ func main() {
 	routes.SetUpMovieRoutes(db, r)
 	routes.SetUpTheaterRouters(db, r)
 	routes.SetUpShowtimeRoutes(db, r)
+	routes.SetUpUserRoutes(db, r)
+	routes.SetUpTicketRoutes(db, r)
 
 	const port = ":8080"
 	// Log the port number where the server will start.

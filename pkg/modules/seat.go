@@ -2,9 +2,9 @@ package modules
 
 import "gorm.io/gorm"
 
-type Ticket struct {
+type Seat struct {
 	gorm.Model
-	ShowtimeID uint
 	UserID     uint
-	SeatID     uint
+	ShowtimeID uint
+	SeatNumber int
 }
